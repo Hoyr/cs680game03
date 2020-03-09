@@ -63,7 +63,7 @@ protected:
 	float lag{ 0 };
 	std::vector<GameLib::ActorPtr> actorPool;
 
-	GameLib::InputCommand shakeCommand;
+	GameLib::InputCommand shootCommand;
 	QuitCommand quitCommand;
 	MovementCommand xaxisCommand;
 	MovementCommand yaxisCommand;

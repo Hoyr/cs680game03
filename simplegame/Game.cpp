@@ -27,7 +27,7 @@ void Game::init() {
 	PlayMusicCommand playMusic3(2);
 
 	input.back = &quitCommand;
-	input.start = &shakeCommand;
+	input.buttonA = &shootCommand;
 	input.axis1X = &xaxisCommand;
 	input.axis1Y = &yaxisCommand;
 }
@@ -106,14 +106,14 @@ void Game::initLevel(int levelNum) {
 	box2d.setGravity({0,0});
 
 	GameLib::ActorPtr actor;
-	actor = _makeActor(cx + 6, cy, speed, 0, NewInput(), NewActor(), NewPhysics(), NewGraphics());
+	actor = _makeActor(cx + 6, cy, 4, 0, NewInput(), NewActor(), NewPhysics(), NewGraphics());
 	world.addDynamicActor(actor);
 
-	actor = _makeActor(cx + 6, cy + 4.5f, 4, 11, nullptr, NewActor(), NewPhysics(), NewGraphics());
-	world.addStaticActor(actor);
+	actor = _makeActor(cx + 6, cy + 4.5f, 4, 11, NewRandomInput(), NewActor(), NewPhysics(), NewGraphics());
+	world.addDynamicActor(actor);
 
-	actor = _makeActor(cx + 10, cy - 4, 4, 12, nullptr, NewActor(), NewPhysics(), NewGraphics());
-	world.addStaticActor(actor);
+	actor = _makeActor(cx + 10, cy - 4, 4, 12, NewRandomInput(), NewActor(), NewPhysics(), NewGraphics());
+	world.addDynamicActor(actor);
 
 	actor = _makeActor(16, 6, 4, 13, NewRandomInput(), NewActor(), NewPhysics(), NewGraphics());
 	world.addDynamicActor(actor);
@@ -121,18 +121,18 @@ void Game::initLevel(int levelNum) {
 	actor = _makeActor(6, 6, 4, 13, NewRandomInput(), NewActor(), NewPhysics(), NewGraphics());
 	world.addDynamicActor(actor);
 
-	actor = _makeActor(10, 10, 4, 11, nullptr, NewActor(), NewPhysics(), NewGraphics());
-	world.addTriggerActor(actor);
+	actor = _makeActor(10, 10, 4, 11, NewRandomInput(), NewActor(), NewPhysics(), NewGraphics());
+	world.addDynamicActor(actor);
 
-	actor = _makeActor(19, 10, 4, 12, nullptr, NewActor(), NewPhysics(), NewGraphics());
-	world.addTriggerActor(actor);
+	actor = _makeActor(19, 10, 4, 12, NewRandomInput(), NewActor(), NewPhysics(), NewGraphics());
+	world.addDynamicActor(actor);
 }
 
 
 void Game::showIntro() {
 	// context.playMusicClip(0);
 	GameLib::StoryScreen ss;
-	ss.setBlipSound(SOUND_BLIP);
+	//ss.setBlipSound(SOUND_BLIP);
 	if (!ss.load("dialog.txt")) {
 		// do something default
 		ss.setFont(0, "URWClassico-Bold.ttf", 2.0f);
@@ -175,12 +175,9 @@ void Game::showIntro() {
 }
 
 
-void Game::showWonEnding() {}
-
-
-void Game::showLostEnding() {
+void Game::showWonEnding() {
 	GameLib::StoryScreen ss;
-	ss.setBlipSound(SOUND_BLIP);
+	//ss.setBlipSound(SOUND_BLIP);
 	ss.setFont(0, "URWClassico-Bold.ttf", 2.0f);
 	ss.setFont(1, "URWClassico-Bold.ttf", 1.0f);
 	ss.setFontStyle(0, 1, ss.HALIGN_CENTER, ss.VALIGN_BOTTOM);
@@ -188,7 +185,23 @@ void Game::showLostEnding() {
 	ss.newFrame(1000, 0, 0, 0, 0, GameLib::BLACK);
 	ss.newFrame(5000, GameLib::BLACK, 3, GameLib::RED, 2, GameLib::YELLOW);
 	ss.frameHeader(0, "The End");
-	ss.frameLine(1, "Oh! This game must not be finished!");
+	ss.frameLine(1, "You Won the Eurf is safe... for now.");
+	ss.newFrame(0, 0, 0, 0, 0, GameLib::BLACK);
+	ss.play();
+}
+
+
+void Game::showLostEnding() {
+	GameLib::StoryScreen ss;
+	//ss.setBlipSound(SOUND_BLIP);
+	ss.setFont(0, "URWClassico-Bold.ttf", 2.0f);
+	ss.setFont(1, "URWClassico-Bold.ttf", 1.0f);
+	ss.setFontStyle(0, 1, ss.HALIGN_CENTER, ss.VALIGN_BOTTOM);
+	ss.setFontStyle(1, 0, ss.HALIGN_CENTER, ss.VALIGN_CENTER);
+	ss.newFrame(1000, 0, 0, 0, 0, GameLib::BLACK);
+	ss.newFrame(5000, GameLib::BLACK, 3, GameLib::RED, 2, GameLib::YELLOW);
+	ss.frameHeader(0, "The End");
+	ss.frameLine(1, "You Lost the Eurf is doomed!");
 	ss.newFrame(0, 0, 0, 0, 0, GameLib::BLACK);
 	ss.play();
 }
@@ -246,6 +259,13 @@ bool Game::playGame() {
 
 		context.getEvents();
 		input.handle();
+		if (shootCommand.checkClear()) {
+			GameLib::ActorPtr actor = _makeActor(world.dynamicActors[0]->center().x-0.5, world.dynamicActors[0]->center().y-1.5, 5, 5, 
+				nullptr, std::make_shared<GameLib::ActorComponent>(), std::make_shared<GameLib::SimplePhysicsComponent>(), 
+				std::make_shared<GameLib::SimpleGraphicsComponent>());
+			actor->velocity.y=5;
+			world.addDynamicActor(actor);
+		}
 		_debugKeys();
 
 		context.clearScreen(backColor);
@@ -255,7 +275,7 @@ bool Game::playGame() {
 			lag -= Game::MS_PER_UPDATE;
 		}
 
-		shake();
+		
 		updateCamera();
 		drawWorld();
 		drawHUD();
@@ -263,6 +283,22 @@ bool Game::playGame() {
 		context.swapBuffers();
 		frames++;
 		std::this_thread::yield();
+
+		
+		gameWon = true;
+		gameOver = true;
+		for(int i=1;i<world.dynamicActors.size();i++)
+		{
+			if(world.dynamicActors[i]->active)
+			{
+				gameWon = false;
+				gameOver = false;
+			}
+			else
+				world.dynamicActors.erase(world.dynamicActors.begin()+i);
+		}
+
+		gameOver=!(world.dynamicActors[0]->active);
 	}
 
 	return gameWon;
@@ -336,7 +372,5 @@ void Game::_debugKeys() {
 		}
 	}
 
-	if (shakeCommand.checkClear()) {
-		shake(4, 5, 50 * MS_PER_UPDATE);
-	}
+	
 }
